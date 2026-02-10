@@ -1,6 +1,26 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [apiData, setApiData] = useState<string>("");
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const res = await fetch("/api/hello");
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        const data = await res.json();
+        setApiData(JSON.stringify(data));
+      } catch (e: any) {
+        setError(e?.message ?? "Unknown error");
+      }
+    };
+    run();
+  }, []);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
@@ -33,6 +53,20 @@ export default function Home() {
             </a>{" "}
             center.
           </p>
+          <div className="mt-4 w-full rounded-lg border border-black/[.08] p-4 text-left dark:border-white/[.145]">
+            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">API response (/api/hello)</p>
+            {!apiData && !error && (
+              <p className="mt-2 text-zinc-700 dark:text-zinc-200">Loading…</p>
+            )}
+            {apiData && (
+              <pre className="mt-2 whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-50">
+                {apiData}
+              </pre>
+            )}
+            {error && (
+              <p className="mt-2 text-red-600 dark:text-red-400">{error}</p>
+            )}
+          </div>
         </div>
         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
           <a
