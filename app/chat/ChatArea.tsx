@@ -11,6 +11,7 @@ export default function ChatArea({ selectedChatId, onChatId }: { selectedChatId?
   const messagesRef = useRef<HTMLDivElement | null>(null);
   const currentChatIdRef = useRef<string | undefined>(undefined);
   const skipNextLoadRef = useRef<boolean>(false);
+  const assistantSegsRef = useRef<Array<{ text: string; pii: boolean }>>([]);
 
   const scrollToBottom = () => {
     const el = messagesRef.current;
@@ -64,6 +65,7 @@ export default function ChatArea({ selectedChatId, onChatId }: { selectedChatId?
     const nextMessages = [...messages, { role: "user", content: text } as ChatMessage];
     // Optimistically add an empty assistant message to stream into
     setMessages([...nextMessages, { role: "assistant", content: "" }]);
+    assistantSegsRef.current = [];
     setInput("");
     setLoading(true);
     setError(null);
@@ -83,7 +85,7 @@ export default function ChatArea({ selectedChatId, onChatId }: { selectedChatId?
       await addMessage(chatId!, { role: "user", content: text });
 
       // Stream tokens into the last assistant message; backend will persist assistant on done
-      await sendChatStream(nextMessages, (token: string) => {
+      await sendChatStream(nextMessages, (token: string, isPII?: boolean) => {
         setMessages((prev) => {
           const updated = [...prev];
           // Find last assistant message
@@ -95,6 +97,15 @@ export default function ChatArea({ selectedChatId, onChatId }: { selectedChatId?
           }
           return updated;
         });
+        // Append to styled segments for live rendering
+        const segs = assistantSegsRef.current;
+        const last = segs[segs.length - 1];
+        const pii = !!isPII;
+        if (last && last.pii === pii) {
+          last.text += token;
+        } else {
+          segs.push({ text: token, pii });
+        }
       }, { chatId: chatId! });
     } catch (e: any) {
       setError(e?.message || "Failed to send message");
@@ -111,6 +122,8 @@ export default function ChatArea({ selectedChatId, onChatId }: { selectedChatId?
       sendMessage();
     }
   };
+
+  console.log(messages);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl grow flex-col p-4 min-h-0">
@@ -133,7 +146,15 @@ export default function ChatArea({ selectedChatId, onChatId }: { selectedChatId?
                 : "self-start max-w-[85%] rounded-2xl bg-zinc-100 px-4 py-2 dark:bg-zinc-800"
             }
           >
-            <p className="whitespace-pre-wrap break-words">{m.content}</p>
+            {m.role === "assistant" && idx === messages.length - 1 && assistantSegsRef.current.length > 0 ? (
+              <p className="whitespace-pre-wrap break-words">
+                {assistantSegsRef.current.map((s, i) => (
+                  <span key={i} className={s.pii ? "text-red-600" : undefined}>{s.text}</span>
+                ))}
+              </p>
+            ) : (
+              <p className="whitespace-pre-wrap break-words">{m.content}</p>
+            )}
           </div>
         ))}
         {/* Subtle streaming indicator */}

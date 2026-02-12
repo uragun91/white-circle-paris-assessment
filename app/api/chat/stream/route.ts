@@ -154,38 +154,6 @@ export async function POST(req: NextRequest) {
     }
   };
 
-  const escapeHTML = (str: string) =>
-    str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-
-  const renderWithPII = (text: string, spans: Array<{ start: number; end: number; type?: string }>) => {
-    if (!Array.isArray(spans) || spans.length === 0) return escapeHTML(text);
-    const sorted = [...spans].sort((a, b) => a.start - b.start);
-    const merged: Array<{ start: number; end: number }> = [];
-    for (const s of sorted) {
-      if (merged.length === 0) {
-        merged.push({ start: s.start, end: s.end });
-        continue;
-      }
-      const last = merged[merged.length - 1];
-      if (s.start > last.end) merged.push({ start: s.start, end: s.end });
-      else if (s.end > last.end) last.end = s.end;
-    }
-    let html = "";
-    let cursor = 0;
-    for (const s of merged) {
-      if (s.start > cursor) html += escapeHTML(text.slice(cursor, s.start));
-      html += `<span class=\"text-red-600\">${escapeHTML(text.slice(s.start, s.end))}</span>`;
-      cursor = s.end;
-    }
-    if (cursor < text.length) html += escapeHTML(text.slice(cursor));
-    return html;
-  };
-
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       const send = (obj: any) => {

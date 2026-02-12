@@ -25,7 +25,7 @@ export async function sendChat(messages: ChatMessage[]): Promise<string> {
 // Streaming chat via SSE (POST streaming)
 export async function sendChatStream(
   messages: ChatMessage[],
-  onToken: (token: string) => void,
+  onToken: (token: string, isPII?: boolean) => void,
   options?: { signal?: AbortSignal; chatId?: string }
 ): Promise<void> {
   const res = await fetch("/api/chat/stream", {
@@ -59,16 +59,26 @@ export async function sendChatStream(
 
     for (const part of parts) {
       const lines = part.split("\n");
+      
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
+        if (!trimmed.startsWith("data:")) { 
+            continue;
+        }
+        
         const jsonPart = trimmed.slice(5).trim();
-        if (!jsonPart) continue;
+
+        if (!jsonPart) {
+            continue
+        };
+
         try {
           const obj = JSON.parse(jsonPart);
-          if (obj?.delta) onToken(obj.delta as string);
+          if (obj?.delta) { 
+            onToken(obj.delta as string, !!obj?.pii);
+          }
           if (obj?.done) return;
-        } catch {
+        } catch (e) {
           // ignore
         }
       }
