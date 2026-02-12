@@ -4,6 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "docker compose up -d && next dev",
+    "dev:seed": "docker compose up -d && prisma migrate deploy && prisma db seed && next dev",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

@@ -1,49 +1,102 @@
 # White Circle Assessment — AI Chat
 
-Next.js приложение с чатом, стримингом токенов, хранением в Postgres (Prisma) и серверным PII‑детектом.
+Next.js application with real‑time OpenAI streaming, server‑side PII detection, and PostgreSQL (Prisma) persistence.
 
-## Getting Started
+## Features
 
-First, set up environment:
+- Real-time chat streaming (SSE) from OpenAI
+- Server-side PII detection during streaming; client highlights PII in red as it arrives
+- Chat/message persistence in PostgreSQL via Prisma
+- Sidebar with chat history; new chat is created after the first sent message
+- Docker Compose for local Postgres
 
+## Prerequisites
+
+- Node.js 20+ and npm
+- Docker Desktop (for PostgreSQL)
+
+## From scratch setup
+
+1) Install dependencies
+```
+npm install
+```
+
+2) Configure environment
 ```
 cp .env.local.example .env
-# add your OPENAI_API_KEY
+# Open .env and set OPENAI_API_KEY (and adjust DATABASE_URL if needed)
 ```
 
-Then run the development server:
+3) Quick start with automatic migrations and seeds
+```
+npm run dev:seed
+```
+This will:
+- start Docker Compose (PostgreSQL)
+- apply Prisma migrations
+- seed the DB with 4 example chats
+- start Next.js at http://localhost:3000
 
-```bash
+Open http://localhost:3000/chat to use the chat UI.
+
+Alternative (no auto-seed):
+```
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# in another terminal if needed
+npm run db:deploy && npm run db:seed
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Available scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `npm run dev` — start Docker and Next.js (no seeding)
+- `npm run dev:seed` — start Docker, migrate, seed, then start Next.js
+- `npm run db:migrate` — prisma migrate dev (create/apply local migration)
+- `npm run db:deploy` — apply existing migrations
+- `npm run db:seed` — run seeds (prisma/seed.mjs)
+- `npm run db:reset` — reset database and optionally re-seed
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project structure
 
-Notes
-- Running `npm run dev` also starts Docker Compose with PostgreSQL and applies seeds, so you get sample chats out of the box.
-- Chat UI is at /chat. Sidebar показывает историю чатов; новые чаты создаются после отправки первого сообщения.
+```
+app/
+	api/
+		chat/
+			route.ts          # Non-streaming chat endpoint
+			stream/route.ts   # Streaming with SSE + server PII detection
+		chats/
+			route.ts          # List/create chats
+			[id]/
+				route.ts        # Get chat by ID
+				messages/route.ts # Add message to chat
+	chat/
+		page.tsx            # Page with sidebar + chat area
+		ChatArea.tsx        # Chat component (stream rendering)
+		SidePanel.tsx       # History sidebar
+lib/
+	chatClient.ts         # Client-side API helpers
+	prisma.ts             # Prisma client singleton
+prisma/
+	schema.prisma         # Chat and Message models
+	seed.mjs              # Seed script (creates 4 chats)
+```
 
-## Learn More
+## Environment variables
 
-To learn more about Next.js, take a look at the following resources:
+Required:
+- `OPENAI_API_KEY` — OpenAI API key
+- `DATABASE_URL` — Postgres connection string (defaults to local docker-compose instance)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Optional:
+- `OPENAI_MODEL` — model name (defaults to gpt-4o-mini)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Notes
 
-## Deploy on Vercel
+- SSE stream server sends JSON events like `{ type: "delta", delta: string, pii: boolean }`.
+- On the client, the last assistant message is rendered incrementally; segments with `pii: true` are highlighted in red.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Learn more
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Next.js — https://nextjs.org/docs
+- Prisma — https://www.prisma.io/docs
+- OpenAI API — https://platform.openai.com/docs
